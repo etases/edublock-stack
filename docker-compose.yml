@@ -1,0 +1,36 @@
+networks:
+  internal:
+    name: edublock-network
+
+services:
+  rs:
+    build: https://github.com/etases/EduBlock.RS.git#master
+    volumes:
+      - ./server-data:/data
+    ports:
+      - 7070:7070
+    networks:
+      - internal
+  ocr:
+    build: https://github.com/etases/EduBlock.OCR.git#main
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities:
+              - gpu
+    volumes:
+      - ./ocr-debug:/ocr/debug
+    ports:
+      - 8000:8000
+    networks:
+      - internal
+  client:
+    depends_on:
+      - rs
+      - ocr
+    build: https://github.com/etases/edu-block-client.git#main
+    ports:
+      - 3000:80
+    networks:
+      - internal
