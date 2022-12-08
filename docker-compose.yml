@@ -5,32 +5,80 @@ networks:
 services:
   rs:
     build: https://github.com/etases/EduBlock.RS.git#master
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.edublock-rs-router.rule=Host(`edublock-rs.docker.localhost`)
+      - traefik.http.routers.edublock-rs-router.service=edublock-rs-service
+      - traefik.http.services.edublock-rs-service.loadbalancer.server.port=7070
     volumes:
       - ./server-data:/data
-    ports:
-      - 7070:7070
     networks:
       - internal
+
   ocr:
     build: https://github.com/etases/EduBlock.OCR.git#main
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.edublock-ocr-router.rule=Host(`edublock-ocr.docker.localhost`)
+      - traefik.http.routers.edublock-ocr-router.service=edublock-ocr-service
+      - traefik.http.services.edublock-ocr-service.loadbalancer.server.port=8000
     deploy:
       resources:
         reservations:
           devices:
-            - capabilities:
-              - gpu
+            - driver: nvidia
+              capabilities:
+                - gpu
     volumes:
       - ./ocr-debug:/ocr/debug
-    ports:
-      - 8000:8000
     networks:
       - internal
+
   client:
     depends_on:
       - rs
       - ocr
     build: https://github.com/etases/edu-block-client.git#main
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.edublock-client-router.rule=Host(`edublock-client.docker.localhost`)
+      - traefik.http.routers.edublock-client-router.service=edublock-client-service
+      - traefik.http.services.edublock-client-service.loadbalancer.server.port=80
+    networks:
+      - internal
+
+  proxy:
+    # depends_on:
+    #   - rs
+    #   - ocr
+    #   - client
+    image: traefik:2.9
+    restart: unless-stopped
+    command:
+      - --accesslog=true
+      - --api.insecure=true
+      - --api.dashboard=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --ping=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      # - --providers.docker.network=edublock-network
+      # - --providers.file.directory=/etc/traefik/configurations
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.edublock-proxy-router.rule=Host(`edublock-proxy.docker.localhost`)
+      - traefik.http.routers.edublock-proxy-router.service=edublock-proxy-service
+      - traefik.http.services.edublock-proxy-service.loadbalancer.server.port=8080
     ports:
-      - 3000:80
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # - ./configurations:/etc/traefik/configurations:ro
+      # - ./certificates:/etc/traefik/certificates:ro
     networks:
       - internal
