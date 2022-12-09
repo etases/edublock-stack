@@ -1,6 +1,7 @@
 # EduBlock Deployment
 
 > NOTE: edit config.yml in server-data before using
+> Update values in `.env` if necessary
 
 ## Start services
 
