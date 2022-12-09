@@ -2,6 +2,7 @@
 
 > NOTE: edit config.yml in server-data before using
 > Update values in `.env` if necessary
+> Default url is http://edublock-<service name>.docker.localhost
 
 ## Start services
 
